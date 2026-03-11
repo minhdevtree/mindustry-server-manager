@@ -25,12 +25,21 @@ A self-hosted Mindustry game server with a web-based admin panel. Run both the g
 
 ## Screenshots
 
-<details>
-<summary>Click to expand</summary>
+| Login | Dashboard |
+|-------|-----------|
+| ![Login](screenshots/login.png) | ![Dashboard](screenshots/dashboard.png) |
 
-_Add your own screenshots here_
+| Mods Browser | Mod Detail |
+|--------------|------------|
+| ![Mods](screenshots/mod.png) | ![Mod Detail](screenshots/mod-detail.png) |
 
-</details>
+| Config | Logs |
+|--------|------|
+| ![Config](screenshots/config.png) | ![Logs](screenshots/logs.png) |
+
+| Controls |  |
+|----------|--|
+| ![Controls](screenshots/control.png) | |
 
 ## Quick Start
 
