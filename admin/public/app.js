@@ -835,16 +835,11 @@ async function loadBrowseMods() {
 function filterBrowseMods() {
   const q = document.getElementById("modSearchInput").value.trim();
 
-  // Debounce search
   if (modSearchTimeout) clearTimeout(modSearchTimeout);
 
   if (!q) {
-    // Empty search: show cached repo list
     isSearching = false;
-    filteredMods = allBrowseMods;
-    modsShown = 0;
-    document.getElementById("modCount").textContent = `${allBrowseMods.length} mods`;
-    renderBrowseMods();
+    applyModFilters();
     return;
   }
 
@@ -856,17 +851,112 @@ function filterBrowseMods() {
     const el = document.getElementById("browseModsList");
     el.innerHTML = '<div class="empty-state"><span class="loading"></span> Searching GitHub...</div>';
 
-    const data = await api(`/api/mods/search?q=${encodeURIComponent(q)}&page=1`);
+    const sortBy = document.getElementById("modSort").value;
+    const typeFilter = document.getElementById("modType").value;
+    let searchUrl = `/api/mods/search?q=${encodeURIComponent(q)}&page=1&sort=${sortBy}`;
+    if (typeFilter === "java") searchUrl += "&language=java";
+    else if (typeFilter === "nonjava") searchUrl += "&language=javascript"; // non-Java approx
+    const data = await api(searchUrl);
     if (!data || !data.mods) {
       el.innerHTML = '<div class="empty-state">Search failed</div>';
       return;
     }
     filteredMods = data.mods;
     searchTotal = data.total || 0;
+    // Apply remaining local filters (version) on search results
+    filteredMods = applyLocalFilters(filteredMods);
     modsShown = 0;
-    document.getElementById("modCount").textContent = `${searchTotal} results`;
+    document.getElementById("modCount").textContent = `${filteredMods.length} of ${searchTotal} results`;
     renderBrowseMods();
   }, 400);
+}
+
+async function applyModFilters() {
+  const q = document.getElementById("modSearchInput").value.trim();
+  const sortBy = document.getElementById("modSort").value;
+  const typeFilter = document.getElementById("modType").value;
+
+  // If searching or any non-default filter is set, call GitHub API
+  if (q || isSearching) {
+    filterBrowseMods();
+    return;
+  }
+
+  // Check if sort or type filter needs server-side query
+  const needsApi = sortBy === "updated" || typeFilter !== "all";
+  if (needsApi) {
+    isSearching = true;
+    lastSearchQuery = "";
+    searchPage = 1;
+    const el = document.getElementById("browseModsList");
+    el.innerHTML = '<div class="empty-state"><span class="loading"></span> Filtering...</div>';
+
+    let searchUrl = `/api/mods/search?q=&page=1&sort=${sortBy}`;
+    if (typeFilter === "java") searchUrl += "&language=java";
+    else if (typeFilter === "nonjava") searchUrl += "&language=javascript";
+    const data = await api(searchUrl);
+    if (!data || !data.mods) {
+      el.innerHTML = '<div class="empty-state">Filter failed</div>';
+      return;
+    }
+    filteredMods = data.mods;
+    searchTotal = data.total || 0;
+    filteredMods = applyLocalFilters(filteredMods);
+    modsShown = 0;
+    document.getElementById("modCount").textContent = `${filteredMods.length} of ${searchTotal} results`;
+    renderBrowseMods();
+    return;
+  }
+
+  // Default: local filter on cached mods
+  isSearching = false;
+  filteredMods = applyLocalFilters(allBrowseMods);
+  modsShown = 0;
+  document.getElementById("modCount").textContent = `${filteredMods.length} mods`;
+  renderBrowseMods();
+}
+
+function applyLocalFilters(mods) {
+  const sortBy = document.getElementById("modSort").value;
+  const typeFilter = document.getElementById("modType").value;
+  const versionFilter = document.getElementById("modVersion").value;
+
+  let result = [...mods];
+
+  // Type filter
+  if (typeFilter === "java") {
+    result = result.filter((m) => m.hasJava);
+  } else if (typeFilter === "nonjava") {
+    result = result.filter((m) => !m.hasJava);
+  }
+
+  // Version filter
+  if (versionFilter !== "all") {
+    const minVer = parseInt(versionFilter);
+    result = result.filter((m) => {
+      const v = parseInt(m.minGameVersion);
+      return !v || v >= minVer;
+    });
+  }
+
+  // Sort
+  if (sortBy === "stars") {
+    result.sort((a, b) => (b.stars || 0) - (a.stars || 0));
+  } else if (sortBy === "updated") {
+    result.sort((a, b) => {
+      const da = a.lastUpdated || a.updated || "";
+      const db = b.lastUpdated || b.updated || "";
+      return db.localeCompare(da);
+    });
+  } else if (sortBy === "name") {
+    result.sort((a, b) => {
+      const na = (a.name || a.repo || "").toLowerCase();
+      const nb = (b.name || b.repo || "").toLowerCase();
+      return na.localeCompare(nb);
+    });
+  }
+
+  return result;
 }
 
 function renderBrowseMods() {
@@ -914,7 +1004,12 @@ async function showMoreMods() {
   if (isSearching) {
     // Load next page from GitHub search
     searchPage++;
-    const data = await api(`/api/mods/search?q=${encodeURIComponent(lastSearchQuery)}&page=${searchPage}`);
+    const sortBy = document.getElementById("modSort").value;
+    const typeFilter = document.getElementById("modType").value;
+    let moreUrl = `/api/mods/search?q=${encodeURIComponent(lastSearchQuery)}&page=${searchPage}&sort=${sortBy}`;
+    if (typeFilter === "java") moreUrl += "&language=java";
+    else if (typeFilter === "nonjava") moreUrl += "&language=javascript";
+    const data = await api(moreUrl);
     if (data && data.mods) {
       filteredMods = filteredMods.concat(data.mods);
       modsShown = 0; // reset to re-render all

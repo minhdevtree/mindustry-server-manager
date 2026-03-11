@@ -506,11 +506,15 @@ app.get("/api/mods/search", async (req, res) => {
   try {
     const q = (req.query.q || "").trim();
     const page = parseInt(req.query.page) || 1;
-    if (!q) return res.json({ mods: [], total: 0 });
+    const sort = req.query.sort || "stars"; // stars, updated
+    const language = req.query.language || ""; // java, or empty for all
 
     const https = require("https");
-    const searchQuery = encodeURIComponent(`${q} topic:mindustry-mod`);
-    const url = `https://api.github.com/search/repositories?q=${searchQuery}&sort=stars&per_page=20&page=${page}`;
+    let queryParts = q ? `${q} topic:mindustry-mod` : "topic:mindustry-mod";
+    if (language) queryParts += ` language:${language}`;
+    const searchQuery = encodeURIComponent(queryParts);
+    const sortParam = sort === "name" ? "" : `&sort=${sort}`;
+    const url = `https://api.github.com/search/repositories?q=${searchQuery}${sortParam}&per_page=20&page=${page}`;
 
     const data = await new Promise((resolve, reject) => {
       https

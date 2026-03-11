@@ -236,8 +236,26 @@
             <span id="modCount" style="font-size: 0.75rem; color: var(--text2);"></span>
           </div>
         </div>
-        <div class="console-input" style="margin-bottom: 14px;">
+        <div class="console-input" style="margin-bottom: 10px;">
           <input type="text" id="modSearchInput" placeholder="Search mods..." oninput="filterBrowseMods()" autocapitalize="off" autocorrect="off">
+        </div>
+        <div class="mod-filters">
+          <select id="modSort" onchange="applyModFilters()">
+            <option value="stars">Most Stars</option>
+            <option value="updated">Recently Updated</option>
+            <option value="name">Name A-Z</option>
+          </select>
+          <select id="modType" onchange="applyModFilters()">
+            <option value="all">All Types</option>
+            <option value="java">Java Only</option>
+            <option value="nonjava">Non-Java Only</option>
+          </select>
+          <select id="modVersion" onchange="applyModFilters()">
+            <option value="all">Any Version</option>
+            <option value="155">v155+</option>
+            <option value="146">v146+</option>
+            <option value="136">v136+</option>
+          </select>
         </div>
         <div id="browseModsList" class="mod-browse-list">
           <div class="empty-state">Loading mod repository...</div>
