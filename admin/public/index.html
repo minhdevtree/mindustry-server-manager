@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Mindustry Server</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f1117">
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="brand">Mindustry</span>
+      <span class="subtitle full-title"> Server</span>
+      <span class="subtitle short-title"> Server</span>
+    </h1>
+    <div class="header-right">
+      <span id="roleBadge" class="role-badge" style="display:none;"></span>
+      <span id="statusBadge" class="status-badge offline">Checking...</span>
+      <form method="POST" action="/logout" style="margin:0;">
+        <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <nav>
+    <button class="active" data-panel="dashboard">Dashboard</button>
+    <button data-panel="config">Config</button>
+    <button data-panel="players">Players</button>
+    <button data-panel="maps">Maps</button>
+    <button data-panel="mods">Mods</button>
+    <button data-panel="logs">Logs</button>
+    <button data-panel="console">Console</button>
+    <button data-panel="controls">Controls</button>
+  </nav>
+
+  <main>
+    <!-- Dashboard -->
+    <div id="panel-dashboard" class="panel active">
+      <div class="grid-stats" id="statsGrid">
+        <div class="stat-box">
+          <div class="label">Status</div>
+          <div class="value" id="statStatus">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Map</div>
+          <div class="value" id="statMap">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Wave</div>
+          <div class="value" id="statWave">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Players</div>
+          <div class="value" id="statPlayers">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">FPS</div>
+          <div class="value" id="statFps">--</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">RAM</div>
+          <div class="value" id="statRam">--</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 12px;">
+        <h2>Game Status</h2>
+        <div id="gameStatusRaw" class="log-viewer" style="max-height: 150px; min-height: 50px;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div id="panel-config" class="panel">
+      <div class="card">
+        <h2>Server Configuration</h2>
+        <div id="configLoading" style="padding: 20px; text-align: center;"><span class="loading"></span> Loading config...</div>
+        <table id="configTable" style="display: none;">
+          <thead>
+            <tr><th>Setting</th><th>Value</th><th>Description</th><th></th></tr>
+          </thead>
+          <tbody id="configBody"></tbody>
+        </table>
+        <div id="configList" class="config-list"></div>
+      </div>
+    </div>
+
+    <!-- Players -->
+    <div id="panel-players" class="panel">
+      <div class="card">
+        <div class="logs-header">
+          <h2>Online Players</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadPlayers()">Refresh</button>
+        </div>
+        <div id="playersList"></div>
+      </div>
+
+      <div class="card" data-perm="playerManage">
+        <h2>Player Management</h2>
+        <div class="mgmt-section">
+          <div class="mgmt-row">
+            <div class="field" style="flex:1; min-width: 0;">
+              <label>Kick Player</label>
+              <div class="console-input" style="margin:0;">
+                <input type="text" id="kickInput" placeholder="Player name">
+                <button class="btn btn-warning" onclick="kickPlayer()">Kick</button>
+              </div>
+            </div>
+          </div>
+          <div class="mgmt-row">
+            <div class="field" style="flex:1; min-width: 0;">
+              <label>Ban Player</label>
+              <div class="console-input" style="margin:0;">
+                <input type="text" id="banInput" placeholder="Player name">
+                <select id="banType" style="width: auto; min-width: 80px; flex-shrink: 0;">
+                  <option value="name">By Name</option>
+                  <option value="id">By ID</option>
+                  <option value="ip">By IP</option>
+                </select>
+                <button class="btn btn-danger" onclick="banPlayer()">Ban</button>
+              </div>
+            </div>
+          </div>
+          <div class="mgmt-row">
+            <div class="field" style="flex:1; min-width: 0;">
+              <label>Unban Player</label>
+              <div class="console-input" style="margin:0;">
+                <input type="text" id="unbanInput" placeholder="IP or ID">
+                <button class="btn btn-success" onclick="unbanPlayer()">Unban</button>
+              </div>
+            </div>
+          </div>
+          <div class="mgmt-row" data-perm="playerAdmin">
+            <div class="field" style="flex:1; min-width: 0;">
+              <label>Admin (add/remove)</label>
+              <div class="console-input" style="margin:0;">
+                <input type="text" id="adminInput" placeholder="Player name or ID">
+                <button class="btn btn-primary" onclick="adminPlayer('add')">Add</button>
+                <button class="btn btn-warning" onclick="adminPlayer('remove')">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div class="mgmt-row">
+            <div class="field" style="flex:1; min-width: 0;">
+              <label>Search / Info</label>
+              <div class="console-input" style="margin:0;">
+                <input type="text" id="searchInput" placeholder="Name, IP or UUID">
+                <button class="btn btn-secondary" onclick="searchPlayer()">Search</button>
+                <button class="btn btn-secondary" onclick="infoPlayer()">Info</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="mgmtOutput" class="console-output" style="min-height: 60px; max-height: 200px; margin-top: 12px; display: none;"></div>
+      </div>
+
+      <div class="card">
+        <div class="logs-header">
+          <h2>Bans List</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadBans()">Refresh</button>
+        </div>
+        <div id="bansOutput" class="log-viewer" style="min-height: 40px; max-height: 200px;">Click Refresh to load</div>
+      </div>
+
+      <div class="card">
+        <div class="logs-header">
+          <h2>Admins List</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdmins()">Refresh</button>
+        </div>
+        <div id="adminsOutput" class="log-viewer" style="min-height: 40px; max-height: 200px;">Click Refresh to load</div>
+      </div>
+    </div>
+
+    <!-- Maps -->
+    <div id="panel-maps" class="panel">
+      <div class="card">
+        <h2>Available Maps</h2>
+        <div style="margin-bottom: 8px;">
+          <select id="mapFilter" onchange="loadMaps()" style="width: auto;">
+            <option value="all">All Maps</option>
+            <option value="custom">Custom Only</option>
+            <option value="default">Default Only</option>
+          </select>
+        </div>
+        <div id="mapsList" class="log-viewer" style="min-height: 80px;">Loading...</div>
+      </div>
+      <div class="card" data-perm="mapHost">
+        <h2>Host Map</h2>
+        <div class="host-form">
+          <div class="field">
+            <label>Map</label>
+            <select id="hostMap">
+              <option value="">Loading maps...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Mode</label>
+            <select id="hostMode">
+              <option value="survival">Survival</option>
+              <option value="attack">Attack</option>
+              <option value="pvp">PvP</option>
+              <option value="sandbox">Sandbox</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="hostMap()" style="align-self: end;">Host</button>
+        </div>
+      </div>
+      <div class="card" data-perm="mapHost">
+        <h2>Next Map</h2>
+        <div class="console-input">
+          <select id="nextMapInput" style="flex: 1;">
+            <option value="">Loading maps...</option>
+          </select>
+          <button class="btn btn-secondary" onclick="setNextMap()">Set</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mods -->
+    <div id="panel-mods" class="panel">
+      <div class="card">
+        <div class="logs-header">
+          <h2>Installed Mods</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadInstalledMods()">Refresh</button>
+        </div>
+        <div id="installedModsList"></div>
+      </div>
+      <div class="card" data-perm="modManage">
+        <div class="logs-header">
+          <h2>Browse Mods</h2>
+          <div class="logs-controls">
+            <span id="modCount" style="font-size: 0.75rem; color: var(--text2);"></span>
+          </div>
+        </div>
+        <div class="console-input" style="margin-bottom: 14px;">
+          <input type="text" id="modSearchInput" placeholder="Search mods..." oninput="filterBrowseMods()" autocapitalize="off" autocorrect="off">
+        </div>
+        <div id="browseModsList" class="mod-browse-list">
+          <div class="empty-state">Loading mod repository...</div>
+        </div>
+        <div id="modLoadMore" style="text-align: center; margin-top: 12px; display: none;">
+          <button class="btn btn-secondary btn-sm" onclick="showMoreMods()">Load More</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div id="panel-logs" class="panel">
+      <div class="card">
+        <div class="logs-header">
+          <h2>Server Logs</h2>
+          <div class="logs-controls">
+            <label style="font-size: 0.75rem; color: var(--text2);">
+              <input type="checkbox" id="autoScroll" checked> Auto-scroll
+            </label>
+            <button class="btn btn-secondary btn-sm" onclick="loadLogs()">Refresh</button>
+          </div>
+        </div>
+        <div id="logViewer" class="log-viewer">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Console -->
+    <div id="panel-console" class="panel">
+      <div class="card">
+        <h2>Server Console</h2>
+        <div class="console-input">
+          <input type="text" id="cmdInput" placeholder="e.g. status, help, players" onkeydown="if(event.key==='Enter')sendCmd()" autocapitalize="off" autocorrect="off">
+          <button class="btn btn-primary" onclick="sendCmd()">Send</button>
+        </div>
+        <div id="consoleOutput" class="console-output">Type a command above and press Enter.
+
+Common commands:
+  status      - server status
+  help        - list all commands
+  players     - online players
+  config      - show all config
+  maps [type] - available maps (all/custom/default)
+  save &lt;slot&gt; - save game to slot
+  load &lt;slot&gt; - load save from slot
+  saves       - list all saves
+  say &lt;msg&gt;   - broadcast message
+  kick &lt;name&gt; - kick player
+  ban &lt;type&gt; &lt;value&gt; - ban player (name/id/ip)
+  unban &lt;ip/id&gt;      - unban player
+  admin add/remove &lt;name&gt; - manage admins
+  info &lt;name/ip/uuid&gt;     - player info
+  search &lt;name&gt;           - search players
+  fillitems [team]        - fill core with items
+  runwave                 - trigger next wave
+  playerlimit [n/off]     - set player limit
+  rules                   - list game rules
+  nextmap &lt;name&gt;          - set next map
+  shuffle [mode]          - map shuffle mode</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="panel-controls" class="panel">
+      <div class="card" data-perm="containerControl">
+        <h2>Server Controls</h2>
+        <p style="color: var(--text2); margin-bottom: 12px; font-size: 0.85rem;">Manage the Mindustry Docker container.</p>
+        <div class="controls-row">
+          <button class="btn btn-success" onclick="containerAction('start')">Start</button>
+          <button class="btn btn-danger" onclick="containerAction('stop')">Stop</button>
+          <button class="btn btn-warning" onclick="containerAction('restart')">Restart</button>
+        </div>
+      </div>
+      <div class="card" data-perm="quickActions">
+        <h2>Quick Actions</h2>
+        <div class="controls-row">
+          <button class="btn btn-secondary" onclick="sendQuick('save autosave')">Save Game</button>
+          <button class="btn btn-secondary" onclick="sendQuick('pause on')">Pause</button>
+          <button class="btn btn-secondary" onclick="sendQuick('pause off')">Unpause</button>
+          <button class="btn btn-secondary" data-perm="quickAdmin" onclick="sendQuick('runwave')">Run Wave</button>
+        </div>
+        <div class="controls-row" style="margin-top: 8px;" data-perm="quickAdmin">
+          <button class="btn btn-secondary" onclick="sendQuick('fillitems')">Fill Items</button>
+          <button class="btn btn-secondary" onclick="sendQuick('loadautosave')">Load Autosave</button>
+          <button class="btn btn-danger" onclick="if(confirm('End the current game?'))sendQuick('gameover')">End Game</button>
+        </div>
+      </div>
+      <div class="card" data-perm="containerControl">
+        <h2>Player Limit</h2>
+        <div class="console-input">
+          <input type="text" id="playerLimitInput" placeholder="Number or 'off'">
+          <button class="btn btn-secondary" onclick="setPlayerLimit()">Set</button>
+        </div>
+      </div>
+      <div class="card" data-perm="broadcast">
+        <h2>Broadcast Message</h2>
+        <div class="console-input">
+          <input type="text" id="sayInput" placeholder="Message to all players..." onkeydown="if(event.key==='Enter')broadcastMsg()">
+          <button class="btn btn-primary" onclick="broadcastMsg()">Send</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Mod Detail Modal -->
+  <div id="modModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modModalTitle">Mod Name</h2>
+        <button class="btn btn-ghost btn-sm" onclick="closeModModal()">&times;</button>
+      </div>
+      <div class="modal-meta" id="modModalMeta"></div>
+      <div class="modal-actions" id="modModalActions"></div>
+      <div class="modal-body" id="modModalBody">
+        <div class="empty-state"><span class="loading"></span> Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

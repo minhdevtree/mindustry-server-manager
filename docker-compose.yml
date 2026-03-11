@@ -1,0 +1,31 @@
+services:
+  mindustry:
+    image: ich777/mindustry-server:latest
+    container_name: ${CONTAINER_NAME:-mindustry-server}
+    ports:
+      - "6567:6567/tcp"
+      - "6567:6567/udp"
+    environment:
+      - UID=1000
+      - GID=1000
+      - GAME_V=${GAME_V:-155}
+    volumes:
+      - ./data:/mindustry
+    restart: unless-stopped
+
+  admin:
+    build: ./admin
+    container_name: mindustry-admin
+    ports:
+      - "${ADMIN_PORT:-9125}:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/config/logs:/logs:ro
+      - ./data/config/mods:/mods
+    environment:
+      - USERS=${USERS:-admin:changeme:admin}
+      - CONTAINER_NAME=${CONTAINER_NAME:-mindustry-server}
+      - LOG_PATH=${LOG_PATH:-/logs/log-0.txt}
+    restart: unless-stopped
+    depends_on:
+      - mindustry

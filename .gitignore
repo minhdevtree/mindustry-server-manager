@@ -1,0 +1,23 @@
+# Runtime data (server jar, saves, logs, settings)
+data/
+
+# Dependencies
+admin/node_modules/
+
+# Environment (contains credentials)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/
