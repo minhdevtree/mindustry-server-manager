@@ -100,60 +100,22 @@
       </div>
 
       <div class="card" data-perm="playerManage">
-        <h2>Player Management</h2>
-        <div class="mgmt-section">
-          <div class="mgmt-row">
-            <div class="field" style="flex:1; min-width: 0;">
-              <label>Kick Player</label>
-              <div class="console-input" style="margin:0;">
-                <input type="text" id="kickInput" placeholder="Player name">
-                <button class="btn btn-warning" onclick="kickPlayer()">Kick</button>
-              </div>
-            </div>
-          </div>
-          <div class="mgmt-row">
-            <div class="field" style="flex:1; min-width: 0;">
-              <label>Ban Player</label>
-              <div class="console-input" style="margin:0;">
-                <input type="text" id="banInput" placeholder="Player name">
-                <select id="banType" style="width: auto; min-width: 80px; flex-shrink: 0;">
-                  <option value="name">By Name</option>
-                  <option value="id">By ID</option>
-                  <option value="ip">By IP</option>
-                </select>
-                <button class="btn btn-danger" onclick="banPlayer()">Ban</button>
-              </div>
-            </div>
-          </div>
-          <div class="mgmt-row">
-            <div class="field" style="flex:1; min-width: 0;">
-              <label>Unban Player</label>
-              <div class="console-input" style="margin:0;">
-                <input type="text" id="unbanInput" placeholder="IP or ID">
-                <button class="btn btn-success" onclick="unbanPlayer()">Unban</button>
-              </div>
-            </div>
-          </div>
-          <div class="mgmt-row" data-perm="playerAdmin">
-            <div class="field" style="flex:1; min-width: 0;">
-              <label>Admin (add/remove)</label>
-              <div class="console-input" style="margin:0;">
-                <input type="text" id="adminInput" placeholder="Player name or ID">
-                <button class="btn btn-primary" onclick="adminPlayer('add')">Add</button>
-                <button class="btn btn-warning" onclick="adminPlayer('remove')">Remove</button>
-              </div>
-            </div>
-          </div>
-          <div class="mgmt-row">
-            <div class="field" style="flex:1; min-width: 0;">
-              <label>Search / Info</label>
-              <div class="console-input" style="margin:0;">
-                <input type="text" id="searchInput" placeholder="Name, IP or UUID">
-                <button class="btn btn-secondary" onclick="searchPlayer()">Search</button>
-                <button class="btn btn-secondary" onclick="infoPlayer()">Info</button>
-              </div>
-            </div>
-          </div>
+        <h2>Player Actions</h2>
+        <p class="card-hint">Type a player name/ID/IP, choose an action, and run it.</p>
+        <div class="player-action-bar">
+          <input type="text" id="playerActionInput" placeholder="Player name, ID, or IP" onkeydown="if(event.key==='Enter')runPlayerAction()">
+          <select id="playerActionType">
+            <option value="kick">Kick</option>
+            <option value="ban-name">Ban (name)</option>
+            <option value="ban-id">Ban (ID)</option>
+            <option value="ban-ip">Ban (IP)</option>
+            <option value="unban">Unban</option>
+            <option value="admin-add" data-perm="playerAdmin">Admin +</option>
+            <option value="admin-remove" data-perm="playerAdmin">Admin −</option>
+            <option value="search">Search</option>
+            <option value="info">Info</option>
+          </select>
+          <button class="btn btn-primary" onclick="runPlayerAction()">Run</button>
         </div>
         <div id="mgmtOutput" class="console-output" style="min-height: 60px; max-height: 200px; margin-top: 12px; display: none;"></div>
       </div>
@@ -190,6 +152,7 @@
       </div>
       <div class="card" data-perm="mapHost">
         <h2>Host Map</h2>
+        <p class="card-hint">Select a map and mode, then click Host to switch immediately (ends current game).</p>
         <div class="host-form">
           <div class="field">
             <label>Map</label>
@@ -206,11 +169,12 @@
               <option value="sandbox">Sandbox</option>
             </select>
           </div>
-          <button class="btn btn-primary" onclick="hostMap()" style="align-self: end;">Host</button>
+          <button class="btn btn-primary" onclick="hostMap()" style="align-self: end;">Host Now</button>
         </div>
       </div>
       <div class="card" data-perm="mapHost">
         <h2>Next Map</h2>
+        <p class="card-hint">Set which map loads after the current game ends naturally.</p>
         <div class="console-input">
           <select id="nextMapInput" style="flex: 1;">
             <option value="">Loading maps...</option>
@@ -328,20 +292,6 @@ Common commands:
           <button class="btn btn-warning" onclick="containerAction('restart')">Restart</button>
         </div>
       </div>
-      <div class="card" data-perm="quickActions">
-        <h2>Quick Actions</h2>
-        <div class="controls-row">
-          <button class="btn btn-secondary" onclick="sendQuick('save autosave')">Save Game</button>
-          <button class="btn btn-secondary" onclick="sendQuick('pause on')">Pause</button>
-          <button class="btn btn-secondary" onclick="sendQuick('pause off')">Unpause</button>
-          <button class="btn btn-secondary" data-perm="quickAdmin" onclick="sendQuick('runwave')">Run Wave</button>
-        </div>
-        <div class="controls-row" style="margin-top: 8px;" data-perm="quickAdmin">
-          <button class="btn btn-secondary" onclick="sendQuick('fillitems')">Fill Items</button>
-          <button class="btn btn-secondary" onclick="sendQuick('loadautosave')">Load Autosave</button>
-          <button class="btn btn-danger" onclick="if(confirm('End the current game?'))sendQuick('gameover')">End Game</button>
-        </div>
-      </div>
       <div class="card" data-perm="containerControl">
         <h2>Player Limit</h2>
         <div class="console-input">
@@ -371,6 +321,19 @@ Common commands:
       <div class="modal-body" id="modModalBody">
         <div class="empty-state"><span class="loading"></span> Loading...</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Floating Game Control Bar -->
+  <div id="gameControlBar" class="game-bar" data-perm="quickActions">
+    <button class="game-bar-toggle" onclick="toggleGameBar()" title="Game Controls">&#9881;</button>
+    <div class="game-bar-actions" id="gameBarActions">
+      <button class="btn btn-sm btn-secondary" onclick="sendQuick('save autosave')">Save</button>
+      <button class="btn btn-sm btn-secondary" onclick="sendQuick('pause on')">Pause</button>
+      <button class="btn btn-sm btn-secondary" onclick="sendQuick('pause off')">Resume</button>
+      <button class="btn btn-sm btn-secondary" data-perm="quickAdmin" onclick="sendQuick('runwave')">Run Wave</button>
+      <button class="btn btn-sm btn-secondary" data-perm="quickAdmin" onclick="sendQuick('fillitems')">Fill Items</button>
+      <button class="btn btn-sm btn-danger" onclick="if(confirm('End the current game?'))sendQuick('gameover')">End Game</button>
     </div>
   </div>
 

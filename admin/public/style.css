@@ -137,7 +137,7 @@ nav button.active {
 }
 
 /* ── Layout ── */
-main { max-width: 960px; margin: 0 auto; padding: 16px; }
+main { max-width: 960px; margin: 0 auto; padding: 16px; padding-bottom: 80px; }
 
 .panel { display: none; }
 .panel.active { display: block; }
@@ -162,6 +162,13 @@ main { max-width: 960px; margin: 0 auto; padding: 16px; }
   color: var(--text2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.card-hint {
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin: -8px 0 12px;
+  line-height: 1.4;
 }
 
 /* ── Dashboard Stats ── */
@@ -388,6 +395,24 @@ input::placeholder { color: var(--text3); }
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Player action bar ── */
+.player-action-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.player-action-bar input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.player-action-bar select {
+  width: auto;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
 /* ── Player list ── */
 .player-list { list-style: none; }
 
@@ -403,6 +428,46 @@ input::placeholder { color: var(--text3); }
 
 .player-list li:last-child { border-bottom: none; }
 .player-list li:hover { background: rgba(255,255,255,0.02); }
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.player-name { font-weight: 500; }
+
+.player-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.role-tag {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.role-admin {
+  background: rgba(108, 99, 255, 0.15);
+  color: var(--accent-light);
+  border: 1px solid rgba(108, 99, 255, 0.3);
+}
+
+.role-player {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text3);
+  border: 1px solid var(--border);
+}
 
 .empty-state {
   text-align: center;
@@ -491,12 +556,6 @@ input::placeholder { color: var(--text3); }
 }
 
 /* ── Player management ── */
-.mgmt-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .mgmt-row .field label {
   display: block;
   font-size: 0.7rem;
@@ -781,6 +840,73 @@ input::placeholder { color: var(--text3); }
   border: 1px solid var(--border);
   padding: 6px 10px;
   font-size: 0.82rem;
+}
+
+/* ── Floating Game Bar ── */
+.game-bar {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 900;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.game-bar-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text2);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  transition: background var(--transition), transform 0.15s;
+  flex-shrink: 0;
+}
+
+.game-bar-toggle:hover {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.game-bar-actions {
+  display: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  gap: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  flex-wrap: wrap;
+  max-width: 320px;
+  justify-content: flex-end;
+}
+
+.game-bar-actions.open {
+  display: flex;
+}
+
+.game-bar-actions .btn {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .game-bar {
+    bottom: 12px;
+    right: 12px;
+  }
+
+  .game-bar-actions {
+    max-width: calc(100vw - 80px);
+  }
 }
 
 /* ── Scrollbar styling ── */

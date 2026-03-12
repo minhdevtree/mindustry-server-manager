@@ -404,6 +404,21 @@ async function loadPlayers() {
     return;
   }
 
+  // Load admins list to show status
+  let adminNames = [];
+  try {
+    const adminData = await api("/api/command", {
+      method: "POST",
+      body: JSON.stringify({ command: "admins" }),
+    });
+    if (adminData && adminData.output) {
+      for (const line of adminData.output) {
+        const m = line.match(/^\s*(.+?)(?:\s*\/\s*| ID:)/);
+        if (m) adminNames.push(m[1].trim().toLowerCase());
+      }
+    }
+  } catch (e) {}
+
   const data = await api("/api/players");
   if (
     !data ||
@@ -419,13 +434,18 @@ async function loadPlayers() {
     const stripped = p.replace(/\x1b\[[0-9;]*m/g, "").trim();
     if (stripped && !/^Players/i.test(stripped)) {
       const name = esc(stripped.split(" ")[0]);
+      const isAdmin = adminNames.some(a => a === name.toLowerCase());
       const hasActions = myPerms.playerKick || myPerms.playerBan || myPerms.playerAdmin;
       html += `<li>
-        <span>${esc(stripped)}</span>
-        ${hasActions ? `<div class="cfg-actions">
-          ${myPerms.playerKick ? `<button class="btn btn-warning btn-sm" onclick="quickKick('${name}')">Kick</button>` : ""}
-          ${myPerms.playerBan ? `<button class="btn btn-danger btn-sm" onclick="quickBan('${name}')">Ban</button>` : ""}
-          ${myPerms.playerAdmin ? `<button class="btn btn-primary btn-sm" onclick="quickAdmin('${name}')">Admin</button>` : ""}
+        <div class="player-info">
+          <span class="player-name">${esc(stripped)}</span>
+          ${isAdmin ? '<span class="role-tag role-admin">Admin</span>' : '<span class="role-tag role-player">Player</span>'}
+        </div>
+        ${hasActions ? `<div class="player-actions">
+          ${myPerms.playerAdmin ? `<button class="btn btn-sm ${isAdmin ? 'btn-warning' : 'btn-primary'}" onclick="toggleAdmin('${name}', ${isAdmin})">${isAdmin ? 'Remove Admin' : 'Make Admin'}</button>` : ""}
+          ${myPerms.playerKick ? `<button class="btn btn-warning btn-sm" onclick="quickAction('kick', '${name}')">Kick</button>` : ""}
+          ${myPerms.playerBan ? `<button class="btn btn-danger btn-sm" onclick="quickAction('ban-name', '${name}')">Ban</button>` : ""}
+          <button class="btn btn-secondary btn-sm" onclick="quickAction('info', '${name}')">Info</button>
         </div>` : ""}
       </li>`;
     }
@@ -450,82 +470,54 @@ function checkOnline() {
   return true;
 }
 
-async function kickPlayer() {
-  if (!checkOnline()) return;
-  const name = document.getElementById("kickInput").value.trim();
-  if (!name) return toast("Enter a player name", "error");
-  if (!confirm(`Kick "${name}"?`)) return;
-  const data = await api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `kick ${name}` }),
-  });
-  if (data && data.output) showMgmtOutput(data.output);
-  toast(`Kick command sent for ${name}`);
-  document.getElementById("kickInput").value = "";
-  setTimeout(loadPlayers, 2000);
-}
+const ACTION_MAP = {
+  "kick":         { cmd: v => `kick ${v}`,          confirm: v => `Kick "${v}"?`,         refresh: true },
+  "ban-name":     { cmd: v => `ban name ${v}`,      confirm: v => `Ban "${v}" by name?`,  refresh: false },
+  "ban-id":       { cmd: v => `ban id ${v}`,        confirm: v => `Ban "${v}" by ID?`,    refresh: false },
+  "ban-ip":       { cmd: v => `ban ip ${v}`,        confirm: v => `Ban "${v}" by IP?`,    refresh: false },
+  "unban":        { cmd: v => `unban ${v}`,         confirm: v => `Unban "${v}"?`,        refresh: false },
+  "admin-add":    { cmd: v => `admin add ${v}`,     confirm: v => `Make "${v}" admin?`,   refresh: true },
+  "admin-remove": { cmd: v => `admin remove ${v}`,  confirm: v => `Remove "${v}" as admin?`, refresh: true },
+  "search":       { cmd: v => `search ${v}`,        confirm: null,                        refresh: false },
+  "info":         { cmd: v => `info ${v}`,          confirm: null,                        refresh: false },
+};
 
-async function banPlayer() {
+async function runPlayerAction() {
   if (!checkOnline()) return;
-  const value = document.getElementById("banInput").value.trim();
-  const type = document.getElementById("banType").value;
+  const value = document.getElementById("playerActionInput").value.trim();
+  const action = document.getElementById("playerActionType").value;
   if (!value) return toast("Enter a player name/ID/IP", "error");
-  if (!confirm(`Ban "${value}" by ${type}?`)) return;
+  const act = ACTION_MAP[action];
+  if (!act) return;
+  if (act.confirm && !confirm(act.confirm(value))) return;
   const data = await api("/api/command", {
     method: "POST",
-    body: JSON.stringify({ command: `ban ${type} ${value}` }),
+    body: JSON.stringify({ command: act.cmd(value) }),
   });
   if (data && data.output) showMgmtOutput(data.output);
-  toast(`Ban command sent`);
-  document.getElementById("banInput").value = "";
+  const label = action.replace("-", " ");
+  if (act.confirm) toast(`${label} sent for ${value}`);
+  if (act.refresh) setTimeout(loadPlayers, 2000);
 }
 
-async function unbanPlayer() {
+async function quickAction(action, name) {
   if (!checkOnline()) return;
-  const value = document.getElementById("unbanInput").value.trim();
-  if (!value) return toast("Enter an IP or ID", "error");
+  const act = ACTION_MAP[action];
+  if (!act) return;
+  if (act.confirm && !confirm(act.confirm(name))) return;
   const data = await api("/api/command", {
     method: "POST",
-    body: JSON.stringify({ command: `unban ${value}` }),
+    body: JSON.stringify({ command: act.cmd(name) }),
   });
   if (data && data.output) showMgmtOutput(data.output);
-  toast("Unban command sent");
-  document.getElementById("unbanInput").value = "";
+  if (act.confirm) toast(`${action.replace("-", " ")} sent for ${name}`);
+  if (act.refresh) setTimeout(loadPlayers, 2000);
 }
 
-async function adminPlayer(action) {
+async function toggleAdmin(name, isCurrentlyAdmin) {
   if (!checkOnline()) return;
-  const value = document.getElementById("adminInput").value.trim();
-  if (!value) return toast("Enter a player name or ID", "error");
-  const data = await api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `admin ${action} ${value}` }),
-  });
-  if (data && data.output) showMgmtOutput(data.output);
-  toast(`Admin ${action} sent for ${value}`);
-  document.getElementById("adminInput").value = "";
-}
-
-async function searchPlayer() {
-  if (!checkOnline()) return;
-  const value = document.getElementById("searchInput").value.trim();
-  if (!value) return toast("Enter a search term", "error");
-  const data = await api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `search ${value}` }),
-  });
-  if (data && data.output) showMgmtOutput(data.output);
-}
-
-async function infoPlayer() {
-  if (!checkOnline()) return;
-  const value = document.getElementById("searchInput").value.trim();
-  if (!value) return toast("Enter a name, IP or UUID", "error");
-  const data = await api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `info ${value}` }),
-  });
-  if (data && data.output) showMgmtOutput(data.output);
+  const action = isCurrentlyAdmin ? "admin-remove" : "admin-add";
+  await quickAction(action, name);
 }
 
 async function loadBans() {
@@ -552,39 +544,7 @@ async function loadAdmins() {
   }
 }
 
-// Quick actions from player list
-function quickKick(name) {
-  if (!checkOnline()) return;
-  if (!confirm(`Kick "${name}"?`)) return;
-  api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `kick ${name}` }),
-  }).then(() => {
-    toast(`Kicked ${name}`);
-    setTimeout(loadPlayers, 2000);
-  });
-}
-
-function quickBan(name) {
-  if (!checkOnline()) return;
-  if (!confirm(`Ban "${name}"?`)) return;
-  api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `ban name ${name}` }),
-  }).then(() => {
-    toast(`Banned ${name}`);
-    setTimeout(loadPlayers, 2000);
-  });
-}
-
-function quickAdmin(name) {
-  if (!checkOnline()) return;
-  if (!confirm(`Make "${name}" admin?`)) return;
-  api("/api/command", {
-    method: "POST",
-    body: JSON.stringify({ command: `admin add ${name}` }),
-  }).then(() => toast(`${name} is now admin`));
-}
+// (Quick actions handled by quickAction/toggleAdmin above)
 
 // ── Maps ──
 let cachedMaps = [];
@@ -660,12 +620,12 @@ async function hostMap() {
     return;
   }
   const mapName = map.replace(/_/g, " ");
-  if (!confirm(`Host map "${mapName}" in ${mode} mode?`)) return;
+  if (!confirm(`This will end the current game and host "${mapName}" in ${mode} mode. Continue?`)) return;
   const data = await api("/api/host", {
     method: "POST",
     body: JSON.stringify({ map, mode }),
   });
-  if (data) toast(`Hosting ${mapName}!`);
+  if (data) toast(`Now hosting ${mapName} (${mode})!`);
   setTimeout(loadDashboard, 2000);
 }
 
@@ -749,6 +709,18 @@ async function sendQuick(cmd) {
   });
   if (data) toast("Command sent: " + cmd);
 }
+
+function toggleGameBar() {
+  document.getElementById("gameBarActions").classList.toggle("open");
+}
+
+// Close game bar when clicking outside
+document.addEventListener("click", (e) => {
+  const bar = document.getElementById("gameControlBar");
+  if (bar && !bar.contains(e.target)) {
+    document.getElementById("gameBarActions").classList.remove("open");
+  }
+});
 
 async function broadcastMsg() {
   if (!checkOnline()) return;
